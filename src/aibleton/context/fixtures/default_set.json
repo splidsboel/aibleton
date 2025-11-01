@@ -1,0 +1,27 @@
+{
+  "tempo_bpm": 120.0,
+  "tracks": [
+    {
+      "name": "Drums",
+      "track_index": 0,
+      "volume_db": -3.0,
+      "clips": [
+        {"name": "Intro Beat", "scene_index": 0, "slot_index": 0, "is_midi": true}
+      ]
+    },
+    {
+      "name": "Bass",
+      "track_index": 1,
+      "volume_db": -6.0,
+      "clips": [
+        {"name": "Bassline", "scene_index": 0, "slot_index": 0, "is_midi": true}
+      ]
+    },
+    {
+      "name": "Vocals",
+      "track_index": 2,
+      "volume_db": -2.0,
+      "clips": []
+    }
+  ]
+}

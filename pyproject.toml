@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aibleton"
+version = "0.1.0"
+description = "MVP scaffolding for a natural-language Ableton Live assistant."
+readme = "MANIFEST.md"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[project.scripts]
+aibleton = "aibleton.cli.main:main"
