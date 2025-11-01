@@ -86,8 +86,33 @@ class BridgeTests(unittest.TestCase):
         self.assertEqual(messages[1][0], "/live/track/set/volume")
         self.assertEqual(messages[1][1][0], 0)  # Drums track index
         self.assertTrue(isclose(messages[1][1][1], expected_gain, rel_tol=1e-6))
+        self.assertEqual(messages[2], ("/live/clip/fire", (0, 0)))
+
+    def test_create_clip_message(self) -> None:
+        provider = MutableContextProvider(fixture_path=FIXTURE_PATH)
+        config = OSCBridgeConfig(send=False)
+        bridge = AbletonOSCBridge(config=config, context_provider=provider)
+
+        plan = ActionPlan(
+            intent="create_midi_clip",
+            summary="",
+            actions=[
+                CreateMidiClipAction(
+                    track_name="Drums",
+                    clip_name="Bridge Clip",
+                    length_bars=2,
+                    pattern="test",
+                )
+            ],
+        )
+        bridge.execute(plan)
+        messages = bridge.recorded_messages()
+        self.assertIsNotNone(messages)
+        assert messages is not None
+        # First message should be clip creation
         self.assertEqual(
-            messages[2], ("/live/clip/fire", (0, 0))
+            messages[0],
+            ("/live/clip_slot/create_clip", (0, 1, 8.0)),
         )
 
 

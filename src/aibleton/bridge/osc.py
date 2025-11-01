@@ -103,7 +103,7 @@ class AbletonOSCBridge:
             track = self._track_for_action(action.track_name, context)
             slot_index = self._next_empty_slot(track)
             length_beats = action.length_bars * 4
-            yield "/live/clip/create", [
+            yield "/live/clip_slot/create_clip", [
                 int(track.track_index),
                 int(slot_index),
                 float(length_beats),
