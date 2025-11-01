@@ -3,10 +3,11 @@
 This plan summarizes the next major milestones after the MVP (see `MANIFEST.md`) so each agent can align on priorities and handoffs.
 
 ## 1. Ableton Bridge Integration
-- Implement a production bridge using AbletonOSC or a custom Remote Script.
-- Mirror the `LoggingBridge` API and ensure parity for tempo, clip, and device commands.
-- Add smoke scripts that exercise the bridge in Live 11/12 and document setup steps.
-- Provide regression adapters so automated tests can run in dry mode.
+- ✅ Configurable AbletonOSC bridge with dry-run and UDP transport support (see `src/aibleton/bridge`).
+- ✅ Smoke tooling (`scripts/bridge_smoke.py`) and setup docs (`docs/ableton_bridge_setup.md`).
+- ✅ Regression coverage via `tests/test_bridge.py` and CLI integration dry-runs.
+- ⏭ Extend parity beyond tempo/clip/volume (device parameters, note injection).
+- ⏭ Replace JSON fixture context with live Ableton state discovery.
 
 ## 2. Structured Command Loop with LLM
 - Define the JSON schema (function signatures, error payloads) for LLM output.
