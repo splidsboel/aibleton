@@ -31,7 +31,7 @@ class InMemoryContextProvider:
 
     def snapshot(self) -> LiveContext:
         data = json.loads(self.fixture_path.read_text())
-        tracks = [
+        tracks: list[Track] = [
             Track(
                 name=item["name"],
                 track_index=item["track_index"],
@@ -48,7 +48,18 @@ class InMemoryContextProvider:
             )
             for item in data.get("tracks", [])
         ]
-        return LiveContext(tempo_bpm=data.get("tempo_bpm", 120.0), tracks=tracks)
+        max_slot = max(
+            (clip.slot_index for track in tracks for clip in track.clips),
+            default=-1,
+        )
+        scene_count = data.get("scene_count")
+        if scene_count is None:
+            scene_count = max_slot + 1 if max_slot >= 0 else 0
+        return LiveContext(
+            tempo_bpm=data.get("tempo_bpm", 120.0),
+            tracks=tracks,
+            scene_count=scene_count,
+        )
 
 
 @dataclass
@@ -91,6 +102,8 @@ class MutableContextProvider(ContextProvider):
                     is_midi=True,
                 )
             )
+            if next_slot + 1 > self._context.scene_count:
+                self._context.scene_count = next_slot + 1
         elif isinstance(action, LaunchClipAction):
             # Launching a clip does not alter context in this MVP.
             return

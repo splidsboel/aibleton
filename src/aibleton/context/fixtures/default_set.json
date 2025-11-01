@@ -1,5 +1,6 @@
 {
   "tempo_bpm": 120.0,
+  "scene_count": 1,
   "tracks": [
     {
       "name": "Drums",

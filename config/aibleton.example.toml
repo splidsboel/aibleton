@@ -1,0 +1,10 @@
+[bridge]
+# Host/port of AbletonOSC or compatible Remote Script.
+host = "127.0.0.1"
+port = 11000
+
+# Set to true to emit UDP packets. Leave false for dry-run logging.
+send = false
+
+# Seconds before UDP send times out.
+timeout = 1.0
