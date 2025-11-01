@@ -116,12 +116,12 @@ class AbletonOSCBridge:
             track = self._track_for_action(action.track_name, context)
             device = self._device_for_action(track, action.device_name)
             parameter = self._parameter_for_action(device, action.parameter_name)
-            value = self._clamp_parameter_value(parameter, action.value)
+            clamped, normalized = self._normalize_parameter_value(parameter, action.value)
             yield "/live/device/set/parameter/value", [
                 int(track.track_index),
                 int(device.device_index),
                 int(parameter.parameter_index),
-                float(value),
+                float(normalized),
             ]
         else:
             raise BridgeError(f"Unsupported action type: {action.action_type}")
@@ -180,10 +180,16 @@ class AbletonOSCBridge:
             )
         return parameter
 
-    def _clamp_parameter_value(
+    def _normalize_parameter_value(
         self, parameter: DeviceParameter, value: float
-    ) -> float:
-        return max(parameter.min_value, min(parameter.max_value, value))
+    ) -> Tuple[float, float]:
+        clamped = max(parameter.min_value, min(parameter.max_value, value))
+        if parameter.max_value == parameter.min_value:
+            return clamped, 0.0
+        normalized = (clamped - parameter.min_value) / (
+            parameter.max_value - parameter.min_value
+        )
+        return clamped, normalized
 
     def recorded_messages(self) -> Optional[Sequence[OSCMessage]]:
         if not self.dry_run_recorder:

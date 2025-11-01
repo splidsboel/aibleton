@@ -140,4 +140,5 @@ class MutableContextProvider(ContextProvider):
             parameter = device.find_parameter(action.parameter_name)
             if not parameter:
                 return
-            parameter.value = action.value
+            clamped = max(parameter.min_value, min(parameter.max_value, action.value))
+            parameter.value = clamped

@@ -142,8 +142,8 @@ class BridgeTests(unittest.TestCase):
         address, args = messages[0]
         self.assertEqual(address, "/live/device/set/parameter/value")
         self.assertEqual(args[:3], (0, 0, 0))
-        # max_value for drive is 36.0 in fixture, ensure clamp applied
-        self.assertAlmostEqual(args[3], 36.0, places=4)
+        # max_value for drive is 36.0 in fixture, so normalized value should clamp to 1.0
+        self.assertAlmostEqual(args[3], 1.0, places=4)
 
 
 if __name__ == "__main__":
