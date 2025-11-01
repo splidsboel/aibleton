@@ -140,7 +140,7 @@ class BridgeTests(unittest.TestCase):
         assert messages is not None
         self.assertEqual(len(messages), 1)
         address, args = messages[0]
-        self.assertEqual(address, "/live/device/set/parameter")
+        self.assertEqual(address, "/live/device/set/parameter/value")
         self.assertEqual(args[:3], (0, 0, 0))
         # max_value for drive is 36.0 in fixture, ensure clamp applied
         self.assertAlmostEqual(args[3], 36.0, places=4)

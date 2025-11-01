@@ -117,7 +117,7 @@ class AbletonOSCBridge:
             device = self._device_for_action(track, action.device_name)
             parameter = self._parameter_for_action(device, action.parameter_name)
             value = self._clamp_parameter_value(parameter, action.value)
-            yield "/live/device/set/parameter", [
+            yield "/live/device/set/parameter/value", [
                 int(track.track_index),
                 int(device.device_index),
                 int(parameter.parameter_index),
