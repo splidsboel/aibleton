@@ -103,6 +103,7 @@ class AbletonOSCBridge:
             track = self._track_for_action(action.track_name, context)
             slot_index = self._next_empty_slot(track)
             length_beats = action.length_bars * 4
+            yield from self._ensure_scene_for_slot(slot_index, context)
             yield "/live/clip_slot/create_clip", [
                 int(track.track_index),
                 int(slot_index),
@@ -136,6 +137,16 @@ class AbletonOSCBridge:
         while slot in used:
             slot += 1
         return slot
+
+    def _ensure_scene_for_slot(
+        self, slot_index: int, context: LiveContext
+    ) -> Iterable[OSCMessage]:
+        messages: list[OSCMessage] = []
+        if slot_index >= context.scene_count:
+            for new_index in range(context.scene_count, slot_index + 1):
+                messages.append(("/live/song/create_scene", (int(new_index),)))
+            context.scene_count = slot_index + 1
+        return messages
 
     def recorded_messages(self) -> Optional[Sequence[OSCMessage]]:
         if not self.dry_run_recorder:

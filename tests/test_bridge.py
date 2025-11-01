@@ -109,10 +109,11 @@ class BridgeTests(unittest.TestCase):
         messages = bridge.recorded_messages()
         self.assertIsNotNone(messages)
         assert messages is not None
-        # First message should be clip creation
         self.assertEqual(
-            messages[0],
-            ("/live/clip_slot/create_clip", (0, 1, 8.0)),
+            messages[0], ("/live/song/create_scene", (1,))
+        )
+        self.assertEqual(
+            messages[1], ("/live/clip_slot/create_clip", (0, 1, 8.0))
         )
 
 

@@ -37,6 +37,7 @@ class LiveContext:
 
     tempo_bpm: float
     tracks: List[Track] = field(default_factory=list)
+    scene_count: int = 0
 
     def find_track(self, name: str) -> Optional[Track]:
         lname = name.strip().lower()
@@ -48,3 +49,14 @@ class LiveContext:
     def list_track_names(self) -> Iterable[str]:
         for track in self.tracks:
             yield track.name
+
+    def max_clip_slot_index(self) -> int:
+        max_index = -1
+        for track in self.tracks:
+            for clip in track.clips:
+                max_index = max(max_index, clip.slot_index)
+        return max_index
+
+    def ensure_scene_count(self, minimum: int) -> None:
+        if minimum > self.scene_count:
+            self.scene_count = minimum
