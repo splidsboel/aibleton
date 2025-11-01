@@ -1,15 +1,17 @@
 from __future__ import annotations
 
-import json
 import unittest
+from math import isclose
 from pathlib import Path
 
+from aibleton.bridge.config import OSCBridgeConfig
 from aibleton.bridge.logging import LoggingBridge
-from aibleton.bridge.osc import AbletonOSCBridge
+from aibleton.bridge.osc import AbletonOSCBridge, db_to_linear
 from aibleton.context.provider import MutableContextProvider
 from aibleton.orchestrator.schema import (
     ActionPlan,
     CreateMidiClipAction,
+    LaunchClipAction,
     SetTempoAction,
     SetTrackVolumeAction,
 )
@@ -59,14 +61,34 @@ class BridgeTests(unittest.TestCase):
         assert drums  # hint for type-checkers
         self.assertTrue(any(clip.name == "New Clip" for clip in drums.clips))
 
-    def test_osc_bridge_serializes_payload(self) -> None:
+    def test_osc_bridge_records_messages(self) -> None:
         provider = MutableContextProvider(fixture_path=FIXTURE_PATH)
-        bridge = AbletonOSCBridge(enable_transport=False, context_provider=provider)
-        action = SetTrackVolumeAction(track_name="Drums", volume_db=-6.0)
-        payload = bridge._serialize_action(action)  # type: ignore[attr-defined]
-        decoded = json.loads(payload)
-        self.assertEqual(decoded["address"], "/aibleton/set_track_volume")
-        self.assertEqual(decoded["args"]["track_name"], "Drums")
+        config = OSCBridgeConfig(send=False)
+        bridge = AbletonOSCBridge(config=config, context_provider=provider)
+
+        plan = ActionPlan(
+            intent="smoke",
+            summary="",
+            actions=[
+                SetTempoAction(tempo_bpm=125),
+                SetTrackVolumeAction(track_name="Drums", volume_db=-6.0),
+                LaunchClipAction(track_name="Drums", clip_name="Intro Beat"),
+            ],
+        )
+        bridge.execute(plan)
+        messages = bridge.recorded_messages()
+        self.assertIsNotNone(messages)
+        assert messages is not None
+        self.assertEqual(
+            messages[0], ("/live/song/set/tempo", (125.0,))
+        )
+        expected_gain = db_to_linear(-6.0)
+        self.assertEqual(messages[1][0], "/live/track/set/volume")
+        self.assertEqual(messages[1][1][0], 0)  # Drums track index
+        self.assertTrue(isclose(messages[1][1][1], expected_gain, rel_tol=1e-6))
+        self.assertEqual(
+            messages[2], ("/live/clip/fire", (0, 0))
+        )
 
 
 if __name__ == "__main__":

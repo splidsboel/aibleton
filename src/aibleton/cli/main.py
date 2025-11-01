@@ -4,6 +4,9 @@ import argparse
 import logging
 from pathlib import Path
 
+from dataclasses import replace
+
+from ..bridge.config import OSCBridgeConfig
 from ..bridge.logging import LoggingBridge
 from ..bridge.osc import AbletonOSCBridge
 from ..context.provider import MutableContextProvider
@@ -40,6 +43,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Execution backend to use.",
     )
     parser.add_argument(
+        "--config",
+        type=Path,
+        help="Path to aibleton TOML config (overrides defaults).",
+    )
+    parser.add_argument(
         "--osc-host",
         default="127.0.0.1",
         help="OSC host for Ableton bridge.",
@@ -72,11 +80,35 @@ def main(argv: list[str] | None = None) -> None:
     )
     safety = SafetyManager()
 
-    if args.bridge == "osc":
-        bridge = AbletonOSCBridge(
+    parser_defaults = {
+        "osc_host": parser.get_default("osc_host"),
+        "osc_port": parser.get_default("osc_port"),
+        "osc_send": parser.get_default("osc_send"),
+    }
+    config = None
+    if args.config:
+        config = OSCBridgeConfig.from_toml(args.config)
+    else:
+        discovered = OSCBridgeConfig.discover(Path.cwd())
+        if discovered:
+            config = discovered
+    if config is None:
+        config = OSCBridgeConfig(
             host=args.osc_host,
             port=args.osc_port,
-            enable_transport=args.osc_send,
+            send=args.osc_send,
+        )
+    else:
+        if args.osc_host != parser_defaults["osc_host"]:
+            config = replace(config, host=args.osc_host)
+        if args.osc_port != parser_defaults["osc_port"]:
+            config = replace(config, port=args.osc_port)
+        if args.osc_send != parser_defaults["osc_send"]:
+            config = replace(config, send=args.osc_send)
+
+    if args.bridge == "osc":
+        bridge = AbletonOSCBridge(
+            config=config,
             context_provider=context_provider,
         )
     else:
@@ -84,8 +116,17 @@ def main(argv: list[str] | None = None) -> None:
 
     print("aibleton assistant MVP — type commands, 'help' for tips, 'quit' to exit.")
     print("Supported intents: set tempo, adjust volume, create clip, launch clip.")
-    if args.bridge == "osc" and not args.osc_send:
-        print("OSC bridge running in dry-run mode; use --osc-send to transmit UDP payloads.")
+    if args.bridge == "osc":
+        if config.send:
+            print(
+                f"OSC bridge sending to {config.host}:{config.port} "
+                f"(timeout {config.timeout:.1f}s)."
+            )
+        else:
+            print(
+                "OSC bridge dry-run mode; no UDP packets will be emitted. "
+                "Use --osc-send or set send=true in config."
+            )
 
     while True:
         try:
