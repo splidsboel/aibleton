@@ -22,6 +22,7 @@ class Track:
     track_index: int
     volume_db: float = 0.0
     clips: List[Clip] = field(default_factory=list)
+    devices: List["Device"] = field(default_factory=list)
 
     def find_clip(self, name: str) -> Optional[Clip]:
         lname = name.strip().lower()
@@ -60,3 +61,30 @@ class LiveContext:
     def ensure_scene_count(self, minimum: int) -> None:
         if minimum > self.scene_count:
             self.scene_count = minimum
+
+
+@dataclass
+class DeviceParameter:
+    """Represents a device parameter (e.g., Dry/Wet)."""
+
+    name: str
+    parameter_index: int
+    min_value: float
+    max_value: float
+    value: float
+
+
+@dataclass
+class Device:
+    """Device metadata associated with a track."""
+
+    name: str
+    device_index: int
+    parameters: List[DeviceParameter] = field(default_factory=list)
+
+    def find_parameter(self, name: str) -> Optional[DeviceParameter]:
+        lname = name.strip().lower()
+        for parameter in self.parameters:
+            if parameter.name.lower() == lname:
+                return parameter
+        return None

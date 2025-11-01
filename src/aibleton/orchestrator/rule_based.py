@@ -11,6 +11,7 @@ from .schema import (
     CreateMidiClipAction,
     LaunchClipAction,
     OrchestrationError,
+    SetDeviceParameterAction,
     SetTempoAction,
     SetTrackVolumeAction,
 )
@@ -34,6 +35,7 @@ class RuleBasedOrchestrator:
         for handler in (
             self._handle_set_tempo,
             self._handle_set_track_volume,
+            self._handle_set_device_parameter,
             self._handle_create_midi_clip,
             self._handle_launch_clip,
         ):
@@ -89,6 +91,51 @@ class RuleBasedOrchestrator:
             summary=summary,
             actions=[action],
             confidence=0.75,
+        )
+
+    def _handle_set_device_parameter(self, text: str, context: LiveContext) -> Optional[ActionPlan]:
+        match = re.search(
+            r"set\s+(?P<track>[a-z0-9\s]+?)\s+(?P<device>[a-z0-9\s]+?)\s+(?P<parameter>[a-z0-9\s\/]+?)\s+to\s+(?P<value>-?\d+(?:\.\d+)?)",
+            text,
+            flags=re.IGNORECASE,
+        )
+        if not match:
+            return None
+
+        track_name = match.group("track").strip()
+        device_name = match.group("device").strip()
+        parameter_name = match.group("parameter").strip()
+        value = float(match.group("value"))
+
+        track = self._locate_track(context, track_name)
+        if not track:
+            return None
+
+        device = next(
+            (d for d in track.devices if d.name.lower() == device_name.lower()),
+            None,
+        )
+        if not device:
+            return None
+
+        parameter = device.find_parameter(parameter_name)
+        if not parameter:
+            return None
+
+        action = SetDeviceParameterAction(
+            track_name=track.name,
+            device_name=device.name,
+            parameter_name=parameter.name,
+            value=value,
+        )
+        summary = (
+            f"Set '{device.name}' parameter '{parameter.name}' on '{track.name}' to {value:.2f}."
+        )
+        return ActionPlan(
+            intent="set_device_parameter",
+            summary=summary,
+            actions=[action],
+            confidence=0.65,
         )
 
     def _handle_create_midi_clip(self, text: str, context: LiveContext) -> Optional[ActionPlan]:

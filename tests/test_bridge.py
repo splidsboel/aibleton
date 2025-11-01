@@ -12,6 +12,7 @@ from aibleton.orchestrator.schema import (
     ActionPlan,
     CreateMidiClipAction,
     LaunchClipAction,
+    SetDeviceParameterAction,
     SetTempoAction,
     SetTrackVolumeAction,
 )
@@ -115,6 +116,34 @@ class BridgeTests(unittest.TestCase):
         self.assertEqual(
             messages[1], ("/live/clip_slot/create_clip", (0, 1, 8.0))
         )
+
+    def test_set_device_parameter_message(self) -> None:
+        provider = MutableContextProvider(fixture_path=FIXTURE_PATH)
+        config = OSCBridgeConfig(send=False)
+        bridge = AbletonOSCBridge(config=config, context_provider=provider)
+
+        plan = ActionPlan(
+            intent="set_device_parameter",
+            summary="",
+            actions=[
+                SetDeviceParameterAction(
+                    track_name="Drums",
+                    device_name="Saturator",
+                    parameter_name="Drive",
+                    value=48.0,  # beyond max to test clamping
+                )
+            ],
+        )
+        bridge.execute(plan)
+        messages = bridge.recorded_messages()
+        self.assertIsNotNone(messages)
+        assert messages is not None
+        self.assertEqual(len(messages), 1)
+        address, args = messages[0]
+        self.assertEqual(address, "/live/device/set/parameter")
+        self.assertEqual(args[:3], (0, 0, 0))
+        # max_value for drive is 36.0 in fixture, ensure clamp applied
+        self.assertAlmostEqual(args[3], 36.0, places=4)
 
 
 if __name__ == "__main__":
