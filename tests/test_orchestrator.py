@@ -11,6 +11,7 @@ from aibleton.orchestrator.schema import (
     ActionPlan,
     CreateMidiClipAction,
     OrchestrationError,
+    SetDeviceParameterAction,
     SetTempoAction,
 )
 from aibleton.orchestrator.structured import StructuredPlanParser
@@ -88,6 +89,15 @@ class HybridOrchestratorTests(unittest.TestCase):
         )
         plan = orchestrator.plan(payload)
         self.assertIsInstance(plan.actions[0], CreateMidiClipAction)
+
+    def test_rule_based_device_parameter(self) -> None:
+        orchestrator = build_hybrid()
+        plan = orchestrator.plan("set drums saturator drive to 18.5")
+        self.assertEqual(plan.intent, "set_device_parameter")
+        self.assertIsInstance(plan.actions[0], SetDeviceParameterAction)
+        self.assertEqual(plan.actions[0].device_name, "Saturator")
+        self.assertEqual(plan.actions[0].parameter_name, "Drive")
+        self.assertAlmostEqual(plan.actions[0].value, 18.5)
 
 
 if __name__ == "__main__":

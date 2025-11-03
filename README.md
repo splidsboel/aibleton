@@ -33,6 +33,7 @@ Key commands:
 - `set drums volume to -4`
 - `launch intro beat clip on drums`
 - `create 4 bar clip named bridge on drums`
+- `set drums saturator drive to 18`
 
 Pass `--bridge osc --config aibleton.toml` to enable the OSC bridge (see below).
 

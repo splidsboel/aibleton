@@ -5,12 +5,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
 
-from .state import Clip, LiveContext, Track
+from .state import Clip, Device, DeviceParameter, LiveContext, Track
 from ..orchestrator.schema import (
     ActionPlan,
     BaseAction,
     CreateMidiClipAction,
     LaunchClipAction,
+    SetDeviceParameterAction,
     SetTempoAction,
     SetTrackVolumeAction,
 )
@@ -31,8 +32,9 @@ class InMemoryContextProvider:
 
     def snapshot(self) -> LiveContext:
         data = json.loads(self.fixture_path.read_text())
-        tracks: list[Track] = [
-            Track(
+        tracks: list[Track] = []
+        for item in data.get("tracks", []):
+            track = Track(
                 name=item["name"],
                 track_index=item["track_index"],
                 volume_db=item.get("volume_db", 0.0),
@@ -46,8 +48,26 @@ class InMemoryContextProvider:
                     for clip in item.get("clips", [])
                 ],
             )
-            for item in data.get("tracks", [])
-        ]
+            devices = []
+            for device in item.get("devices", []):
+                devices.append(
+                    Device(
+                        name=device["name"],
+                        device_index=device["device_index"],
+                        parameters=[
+                            DeviceParameter(
+                                name=param["name"],
+                                parameter_index=param["parameter_index"],
+                                min_value=float(param.get("min_value", 0.0)),
+                                max_value=float(param.get("max_value", 1.0)),
+                                value=float(param.get("value", 0.0)),
+                            )
+                            for param in device.get("parameters", [])
+                        ],
+                    )
+                )
+            track.devices = devices
+            tracks.append(track)
         max_slot = max(
             (clip.slot_index for track in tracks for clip in track.clips),
             default=-1,
@@ -107,3 +127,18 @@ class MutableContextProvider(ContextProvider):
         elif isinstance(action, LaunchClipAction):
             # Launching a clip does not alter context in this MVP.
             return
+        elif isinstance(action, SetDeviceParameterAction):
+            track = self._context.find_track(action.track_name)
+            if not track:
+                return
+            device = next(
+                (d for d in track.devices if d.name.lower() == action.device_name.lower()),
+                None,
+            )
+            if not device:
+                return
+            parameter = device.find_parameter(action.parameter_name)
+            if not parameter:
+                return
+            clamped = max(parameter.min_value, min(parameter.max_value, action.value))
+            parameter.value = clamped
