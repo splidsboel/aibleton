@@ -24,6 +24,7 @@ class OSCBridgeConfig:
 
     host: str = "127.0.0.1"
     port: int = 11000
+    listen_port: int = 11001
     send: bool = False
     timeout: float = 1.0
 
@@ -37,6 +38,7 @@ class OSCBridgeConfig:
         return cls(
             host=data.get("host", cls.host),
             port=int(data.get("port", cls.port)),
+            listen_port=int(data.get("listen_port", cls.listen_port)),
             send=bool(data.get("send", cls.send)),
             timeout=float(data.get("timeout", cls.timeout)),
         )

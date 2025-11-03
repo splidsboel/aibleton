@@ -12,6 +12,7 @@ from aibleton.orchestrator.schema import (
     ActionPlan,
     CreateMidiClipAction,
     LaunchClipAction,
+    SetDeviceParameterAction,
     SetTempoAction,
     SetTrackVolumeAction,
 )

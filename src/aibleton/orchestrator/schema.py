@@ -46,6 +46,15 @@ class LaunchClipAction(BaseAction):
 
 
 @dataclass
+class SetDeviceParameterAction(BaseAction):
+    action_type: ClassVar[str] = "set_device_parameter"
+    track_name: str
+    device_name: str
+    parameter_name: str
+    value: float
+
+
+@dataclass
 class ActionPlan:
     """Container returned by the orchestrator."""
 
@@ -95,6 +104,7 @@ ACTION_REGISTRY: ActionRegistry = {
     SetTrackVolumeAction.action_type: SetTrackVolumeAction,
     CreateMidiClipAction.action_type: CreateMidiClipAction,
     LaunchClipAction.action_type: LaunchClipAction,
+    SetDeviceParameterAction.action_type: SetDeviceParameterAction,
 }
 
 
