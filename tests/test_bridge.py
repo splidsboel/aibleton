@@ -59,7 +59,7 @@ class BridgeTests(unittest.TestCase):
         bridge.execute(plan)
         drums = provider.snapshot().find_track("Drums")
         self.assertIsNotNone(drums)
-        assert drums  # hint for type-checkers
+        assert drums
         self.assertTrue(any(clip.name == "New Clip" for clip in drums.clips))
 
     def test_osc_bridge_records_messages(self) -> None:
@@ -80,12 +80,10 @@ class BridgeTests(unittest.TestCase):
         messages = bridge.recorded_messages()
         self.assertIsNotNone(messages)
         assert messages is not None
-        self.assertEqual(
-            messages[0], ("/live/song/set/tempo", (125.0,))
-        )
+        self.assertEqual(messages[0], ("/live/song/set/tempo", (125.0,)))
         expected_gain = db_to_linear(-6.0)
         self.assertEqual(messages[1][0], "/live/track/set/volume")
-        self.assertEqual(messages[1][1][0], 0)  # Drums track index
+        self.assertEqual(messages[1][1][0], 0)
         self.assertTrue(isclose(messages[1][1][1], expected_gain, rel_tol=1e-6))
         self.assertEqual(messages[2], ("/live/clip/fire", (0, 0)))
 
@@ -110,9 +108,7 @@ class BridgeTests(unittest.TestCase):
         messages = bridge.recorded_messages()
         self.assertIsNotNone(messages)
         assert messages is not None
-        self.assertEqual(
-            messages[0], ("/live/song/create_scene", (1,))
-        )
+        self.assertEqual(messages[0], ("/live/song/create_scene", (1,)))
         self.assertEqual(
             messages[1], ("/live/clip_slot/create_clip", (0, 1, 8.0))
         )
@@ -130,7 +126,7 @@ class BridgeTests(unittest.TestCase):
                     track_name="Drums",
                     device_name="Saturator",
                     parameter_name="Drive",
-                    value=48.0,  # beyond max to test clamping
+                    value=48.0,
                 )
             ],
         )
@@ -142,8 +138,18 @@ class BridgeTests(unittest.TestCase):
         address, args = messages[0]
         self.assertEqual(address, "/live/device/set/parameter/value")
         self.assertEqual(args[:3], (0, 0, 0))
-        # max_value for drive is 36.0 in fixture, so normalized value should clamp to 1.0
         self.assertAlmostEqual(args[3], 1.0, places=4)
+
+    def test_mutable_provider_listener_updates(self) -> None:
+        provider = MutableContextProvider(fixture_path=FIXTURE_PATH)
+        provider.update_tempo(140.0)
+        provider.update_track_volume_linear(0, 0.5)
+        provider.update_device_parameter(0, 0, 0, 12.0)
+
+        context = provider.snapshot()
+        self.assertEqual(context.tempo_bpm, 140.0)
+        drums = context.tracks[0]
+        self.assertAlmostEqual(drums.devices[0].parameters[0].value, 12.0)
 
 
 if __name__ == "__main__":

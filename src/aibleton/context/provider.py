@@ -3,7 +3,10 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
+from threading import RLock
 from typing import Optional, Protocol
+
+import math
 
 from .state import Clip, Device, DeviceParameter, LiveContext, Track
 from ..orchestrator.schema import (
@@ -89,8 +92,10 @@ class MutableContextProvider(ContextProvider):
     fixture_path: Optional[Path] = None
     initial_context: Optional[LiveContext] = None
     _context: LiveContext = field(init=False)
+    _lock: RLock = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
+        self._lock = RLock()
         if self.initial_context is not None:
             self._context = self.initial_context
         elif self.fixture_path is not None:
@@ -100,51 +105,80 @@ class MutableContextProvider(ContextProvider):
             raise ValueError("MutableContextProvider requires fixture_path or initial_context")
 
     def snapshot(self) -> LiveContext:
-        return self._context
+        with self._lock:
+            return self._context
 
     def apply_plan(self, plan: ActionPlan) -> None:
         for action in plan.actions:
             self.apply_action(action)
 
     def apply_action(self, action: BaseAction) -> None:
-        if isinstance(action, SetTempoAction):
-            self._context.tempo_bpm = action.tempo_bpm
-        elif isinstance(action, SetTrackVolumeAction):
-            track = self._context.find_track(action.track_name)
-            if track:
-                track.volume_db = action.volume_db
-        elif isinstance(action, CreateMidiClipAction):
-            track = self._context.find_track(action.track_name)
-            if not track:
-                return
-            if track.find_clip(action.clip_name):
-                return
-            next_slot = max((clip.slot_index for clip in track.clips), default=-1) + 1
-            track.clips.append(
-                Clip(
-                    name=action.clip_name,
-                    scene_index=0,
-                    slot_index=next_slot,
-                    is_midi=True,
+        with self._lock:
+            if isinstance(action, SetTempoAction):
+                self._context.tempo_bpm = action.tempo_bpm
+            elif isinstance(action, SetTrackVolumeAction):
+                track = self._context.find_track(action.track_name)
+                if track:
+                    track.volume_db = action.volume_db
+            elif isinstance(action, CreateMidiClipAction):
+                track = self._context.find_track(action.track_name)
+                if not track:
+                    return
+                if track.find_clip(action.clip_name):
+                    return
+                next_slot = max((clip.slot_index for clip in track.clips), default=-1) + 1
+                track.clips.append(
+                    Clip(
+                        name=action.clip_name,
+                        scene_index=0,
+                        slot_index=next_slot,
+                        is_midi=True,
+                    )
                 )
-            )
-            if next_slot + 1 > self._context.scene_count:
-                self._context.scene_count = next_slot + 1
-        elif isinstance(action, LaunchClipAction):
-            # Launching a clip does not alter context in this MVP.
-            return
-        elif isinstance(action, SetDeviceParameterAction):
-            track = self._context.find_track(action.track_name)
-            if not track:
+                if next_slot + 1 > self._context.scene_count:
+                    self._context.scene_count = next_slot + 1
+            elif isinstance(action, LaunchClipAction):
+                # Launching a clip does not alter context in this MVP.
                 return
-            device = next(
-                (d for d in track.devices if d.name.lower() == action.device_name.lower()),
-                None,
-            )
-            if not device:
-                return
-            parameter = device.find_parameter(action.parameter_name)
-            if not parameter:
-                return
-            clamped = max(parameter.min_value, min(parameter.max_value, action.value))
-            parameter.value = clamped
+            elif isinstance(action, SetDeviceParameterAction):
+                track = self._context.find_track(action.track_name)
+                if not track:
+                    return
+                device = next(
+                    (d for d in track.devices if d.name.lower() == action.device_name.lower()),
+                    None,
+                )
+                if not device:
+                    return
+                parameter = device.find_parameter(action.parameter_name)
+                if not parameter:
+                    return
+                clamped = max(parameter.min_value, min(parameter.max_value, action.value))
+                parameter.value = clamped
+
+    def update_tempo(self, tempo_bpm: float) -> None:
+        with self._lock:
+            self._context.tempo_bpm = tempo_bpm
+
+    def update_track_volume_linear(self, track_index: int, gain: float) -> None:
+        with self._lock:
+            if 0 <= track_index < len(self._context.tracks):
+                track = self._context.tracks[track_index]
+                track.volume_db = self._gain_to_db(gain)
+
+    def update_device_parameter(self, track_index: int, device_index: int, parameter_index: int, value: float) -> None:
+        with self._lock:
+            if 0 <= track_index < len(self._context.tracks):
+                track = self._context.tracks[track_index]
+                if 0 <= device_index < len(track.devices):
+                    parameter_list = track.devices[device_index].parameters
+                    if 0 <= parameter_index < len(parameter_list):
+                        param = parameter_list[parameter_index]
+                        clamped = max(param.min_value, min(param.max_value, value))
+                        param.value = clamped
+
+    @staticmethod
+    def _gain_to_db(value: float) -> float:
+        if value <= 0:
+            return float("-inf")
+        return 20.0 * math.log10(value)

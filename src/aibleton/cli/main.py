@@ -64,6 +64,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Enable actual UDP transport for OSC bridge (otherwise dry-run).",
     )
+    parser.add_argument(
+        "--live-listen",
+        action="store_true",
+        help="Subscribe to AbletonOSC listeners (tempo, track volume) for live updates.",
+    )
     return parser
 
 
@@ -121,11 +126,56 @@ def main(argv: list[str] | None = None) -> None:
     )
     safety = SafetyManager()
 
+    listener: OSCListener | None = None
+    subscription: AbletonOSCSubscriptionManager | None = None
+    subscription_enabled = False
+
     if args.bridge == "osc":
         bridge = AbletonOSCBridge(
             config=config,
             context_provider=context_provider,
         )
+
+        if args.live_listen and live_context is not None:
+            try:
+                listener = OSCListener(host="0.0.0.0", port=config.listen_port or 0)
+                subscription = AbletonOSCSubscriptionManager(
+                    listener=listener,
+                    host=config.host,
+                    port=config.port,
+                )
+
+                def _tempo_handler(args: tuple[float, ...]) -> None:
+                    if not args:
+                        return
+                    tempo = float(args[-1])
+                    context_provider.update_tempo(tempo)
+
+                def _track_volume_handler(args: tuple[float, ...]) -> None:
+                    if len(args) < 2:
+                        return
+                    track_index = int(args[0])
+                    gain = float(args[1])
+                    context_provider.update_track_volume_linear(track_index, gain)
+
+                subscription.subscribe_song_property("tempo", _tempo_handler)
+                snapshot = context_provider.snapshot()
+                for track in snapshot.tracks:
+                    subscription.subscribe_track_property(
+                        track.track_index,
+                        "volume",
+                        _track_volume_handler,
+                    )
+                subscription_enabled = True
+                print(
+                    f"[context] Live listeners enabled (tempo, track volume) on port {listener.port}."
+                )
+            except Exception as exc:  # pragma: no cover - requires live OSC
+                subscription = None
+                if listener is not None:
+                    listener.close()
+                    listener = None
+                print(f"[context] Unable to enable live listeners: {exc}")
     else:
         bridge = LoggingBridge(context_provider=context_provider)
 
@@ -142,41 +192,51 @@ def main(argv: list[str] | None = None) -> None:
                 "OSC bridge dry-run mode; no UDP packets will be emitted. "
                 "Use --osc-send or set send=true in config."
             )
+        if args.live_listen and not subscription_enabled:
+            print(
+                "[context] Live listeners inactive; ensure AbletonOSC is reachable and listen_port is available."
+            )
 
-    while True:
-        try:
-            raw = input("aibleton> ").strip()
-        except (KeyboardInterrupt, EOFError):
-            print("\nBye.")
-            break
+    try:
+        while True:
+            try:
+                raw = input("aibleton> ").strip()
+            except (KeyboardInterrupt, EOFError):
+                print("\nBye.")
+                break
 
-        if not raw:
-            continue
-        if raw.lower() in {"quit", "exit"}:
-            print("Bye.")
-            break
-        if raw.lower() == "help":
-            _print_help()
-            continue
-
-        try:
-            plan = orchestrator.plan(raw)
-        except OrchestrationError as exc:
-            print(f"[orchestrator] {exc}")
-            continue
-
-        explanation = None
-        if safety.requires_confirmation(plan):
-            explanation = safety.explanation(plan)
-            print(f"[safety] Confirmation required: {explanation}")
-            if not _confirm():
-                print("[safety] Cancelled.")
+            if not raw:
+                continue
+            if raw.lower() in {"quit", "exit"}:
+                print("Bye.")
+                break
+            if raw.lower() == "help":
+                _print_help()
                 continue
 
-        bridge.execute(plan)
-        if explanation:
-            print(f"[safety] Proceeded with: {explanation}")
-        print(f"[ok] {plan.summary}")
+            try:
+                plan = orchestrator.plan(raw)
+            except OrchestrationError as exc:
+                print(f"[orchestrator] {exc}")
+                continue
+
+            explanation = None
+            if safety.requires_confirmation(plan):
+                explanation = safety.explanation(plan)
+                print(f"[safety] Confirmation required: {explanation}")
+                if not _confirm():
+                    print("[safety] Cancelled.")
+                    continue
+
+            bridge.execute(plan)
+            if explanation:
+                print(f"[safety] Proceeded with: {explanation}")
+            print(f"[ok] {plan.summary}")
+    finally:
+        if subscription is not None:
+            subscription.close()
+        if listener is not None:
+            listener.close()
 
 
 def _print_help() -> None:
