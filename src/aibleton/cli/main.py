@@ -270,8 +270,11 @@ def _print_context(provider: MutableContextProvider, parameter_limit: int = 3) -
         f"[context] Tempo {context.tempo_bpm:.1f} BPM | scenes={context.scene_count} | tracks={len(context.tracks)}"
     )
     for track in context.tracks:
+        vol_info = f"{track.volume_db:.1f} dB"
+        if track.volume_linear:
+            vol_info += f" | {track.volume_linear:.3f} linear"
         print(
-            f"  track {track.track_index}: {track.name} (vol ≈ {track.volume_db:.1f} dB, clips={len(track.clips)}, devices={len(track.devices)})"
+            f"  track {track.track_index}: {track.name} (vol {vol_info}, clips={len(track.clips)}, devices={len(track.devices)})"
         )
         for clip in track.clips:
             clip_type = "MIDI" if clip.is_midi else "Audio"

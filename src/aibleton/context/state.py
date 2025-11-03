@@ -21,6 +21,7 @@ class Track:
     name: str
     track_index: int
     volume_db: float = 0.0
+    volume_linear: float = 0.0
     clips: List[Clip] = field(default_factory=list)
     devices: List["Device"] = field(default_factory=list)
 

@@ -41,6 +41,7 @@ class InMemoryContextProvider:
                 name=item["name"],
                 track_index=item["track_index"],
                 volume_db=item.get("volume_db", 0.0),
+                volume_linear=item.get("volume_linear", 0.0),
                 clips=[
                     Clip(
                         name=clip["name"],
@@ -120,6 +121,7 @@ class MutableContextProvider(ContextProvider):
                 track = self._context.find_track(action.track_name)
                 if track:
                     track.volume_db = action.volume_db
+                    track.volume_linear = self._db_to_gain(action.volume_db)
             elif isinstance(action, CreateMidiClipAction):
                 track = self._context.find_track(action.track_name)
                 if not track:
@@ -164,6 +166,7 @@ class MutableContextProvider(ContextProvider):
         with self._lock:
             if 0 <= track_index < len(self._context.tracks):
                 track = self._context.tracks[track_index]
+                track.volume_linear = gain
                 track.volume_db = self._gain_to_db(gain)
 
     def update_device_parameter(self, track_index: int, device_index: int, parameter_index: int, value: float) -> None:
@@ -182,3 +185,9 @@ class MutableContextProvider(ContextProvider):
         if value <= 0:
             return float("-inf")
         return 20.0 * math.log10(value)
+
+    @staticmethod
+    def _db_to_gain(value_db: float) -> float:
+        if value_db <= float("-inf"):
+            return 0.0
+        return 10 ** (value_db / 20.0)

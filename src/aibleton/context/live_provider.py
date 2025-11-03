@@ -134,8 +134,8 @@ class AbletonOSCContextProvider(ContextProvider):
         name = str(self._last_value(name_resp))
 
         volume_resp = client.query("/live/track/get/volume", track_index)
-        volume = float(self._last_value(volume_resp))
-        volume_db = gain_to_db(volume)
+        volume_linear = float(self._last_value(volume_resp))
+        volume_db = gain_to_db(volume_linear)
 
         clips = self._collect_clips(client, track_index, scene_count)
         devices = self._collect_devices(client, track_index)
@@ -144,6 +144,7 @@ class AbletonOSCContextProvider(ContextProvider):
             name=name,
             track_index=track_index,
             volume_db=volume_db,
+            volume_linear=volume_linear,
             clips=clips,
             devices=devices,
         )
