@@ -71,6 +71,12 @@ def decode_osc_packet(data: bytes) -> List[OSCMessage]:
             elif tag == "s":
                 value, idx = read_string(idx)
                 args.append(value)
+            elif tag == "T":
+                args.append(True)
+            elif tag == "F":
+                args.append(False)
+            elif tag == "N":
+                args.append(None)
             else:
                 raise ValueError(f"Unsupported OSC type tag '{tag}'")
         return address, tuple(args)

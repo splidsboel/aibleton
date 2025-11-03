@@ -32,7 +32,7 @@ class AbletonOSCClient:
         self,
         host: str,
         send_port: int = 11000,
-        listen_port: int = 11001,
+        listen_port: int | None = None,
         timeout: float = 1.0,
     ) -> None:
         self._host = host
@@ -40,19 +40,23 @@ class AbletonOSCClient:
         self._timeout = timeout
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self._socket.settimeout(timeout)
-        try:
-            self._socket.bind(("0.0.0.0", listen_port))
-        except OSError as exc:  # pragma: no cover - depends on environment
-            raise OSCQueryError(
-                f"Unable to bind to listen port {listen_port}: {exc}"
-            ) from exc
+        if listen_port and listen_port > 0:
+            try:
+                self._socket.bind(("0.0.0.0", listen_port))
+            except OSError:
+                pass
 
     def close(self) -> None:
         self._socket.close()
 
     def query(self, address: str, *args: OSCArg) -> Tuple[OSCArg, ...]:
         payload = encode_osc_message(address, args)
-        self._socket.sendto(payload, (self._host, self._port))
+        try:
+            self._socket.sendto(payload, (self._host, self._port))
+        except OSError as exc:
+            raise OSCQueryError(
+                f"Unable to send OSC message to {self._host}:{self._port}: {exc}"
+            ) from exc
 
         deadline = time.time() + self._timeout
         while True:
@@ -258,4 +262,3 @@ class AbletonOSCContextProvider(ContextProvider):
         if len(response) <= offset:
             return []
         return list(response[offset:])
-
