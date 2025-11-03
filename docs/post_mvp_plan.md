@@ -4,6 +4,7 @@ This plan summarizes the next major milestones after the MVP (see `MANIFEST.md`)
 
 ## 1. Ableton Bridge Integration
 - ✅ Configurable AbletonOSC bridge with dry-run and UDP transport support (see `src/aibleton/bridge`).
+- ✅ Device parameter control mapped to `/live/device/set/parameter` with rule-based parsing support.
 - ✅ Smoke tooling (`scripts/bridge_smoke.py`) and setup docs (`docs/ableton_bridge_setup.md`).
 - ✅ Regression coverage via `tests/test_bridge.py` and CLI integration dry-runs.
 - ✅ Device parameter control and live Ableton state discovery (`AbletonOSCContextProvider`).

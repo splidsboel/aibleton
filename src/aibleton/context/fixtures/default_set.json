@@ -8,6 +8,28 @@
       "volume_db": -3.0,
       "clips": [
         {"name": "Intro Beat", "scene_index": 0, "slot_index": 0, "is_midi": true}
+      ],
+      "devices": [
+        {
+          "name": "Saturator",
+          "device_index": 0,
+          "parameters": [
+            {
+              "name": "Drive",
+              "parameter_index": 0,
+              "min_value": 0.0,
+              "max_value": 36.0,
+              "value": 6.0
+            },
+            {
+              "name": "Dry/Wet",
+              "parameter_index": 1,
+              "min_value": 0.0,
+              "max_value": 1.0,
+              "value": 0.5
+            }
+          ]
+        }
       ]
     },
     {

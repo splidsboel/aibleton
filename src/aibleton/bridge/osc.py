@@ -5,12 +5,13 @@ from dataclasses import dataclass, field
 from typing import Iterable, Optional, Sequence, Tuple
 
 from ..context.provider import MutableContextProvider
-from ..context.state import Clip, LiveContext, Track
+from ..context.state import Clip, Device, DeviceParameter, LiveContext, Track
 from ..orchestrator.schema import (
     ActionPlan,
     BaseAction,
     CreateMidiClipAction,
     LaunchClipAction,
+    SetDeviceParameterAction,
     SetTempoAction,
     SetTrackVolumeAction,
 )
@@ -109,6 +110,19 @@ class AbletonOSCBridge:
                 int(slot_index),
                 float(length_beats),
             ]
+        elif isinstance(action, SetDeviceParameterAction):
+            if not context:
+                raise BridgeError("Setting device parameter requires context.")
+            track = self._track_for_action(action.track_name, context)
+            device = self._device_for_action(track, action.device_name)
+            parameter = self._parameter_for_action(device, action.parameter_name)
+            clamped, normalized = self._normalize_parameter_value(parameter, action.value)
+            yield "/live/device/set/parameter/value", [
+                int(track.track_index),
+                int(device.device_index),
+                int(parameter.parameter_index),
+                float(normalized),
+            ]
         else:
             raise BridgeError(f"Unsupported action type: {action.action_type}")
 
@@ -147,6 +161,35 @@ class AbletonOSCBridge:
                 messages.append(("/live/song/create_scene", (int(new_index),)))
             context.scene_count = slot_index + 1
         return messages
+
+    def _device_for_action(self, track: Track, device_name: str) -> Device:
+        for device in track.devices:
+            if device.name.lower() == device_name.lower():
+                return device
+        raise BridgeError(
+            f"Device '{device_name}' not found on track '{track.name}'."
+        )
+
+    def _parameter_for_action(
+        self, device: Device, parameter_name: str
+    ) -> DeviceParameter:
+        parameter = device.find_parameter(parameter_name)
+        if not parameter:
+            raise BridgeError(
+                f"Parameter '{parameter_name}' not found on device '{device.name}'."
+            )
+        return parameter
+
+    def _normalize_parameter_value(
+        self, parameter: DeviceParameter, value: float
+    ) -> Tuple[float, float]:
+        clamped = max(parameter.min_value, min(parameter.max_value, value))
+        if parameter.max_value == parameter.min_value:
+            return clamped, 0.0
+        normalized = (clamped - parameter.min_value) / (
+            parameter.max_value - parameter.min_value
+        )
+        return clamped, normalized
 
     def recorded_messages(self) -> Optional[Sequence[OSCMessage]]:
         if not self.dry_run_recorder:

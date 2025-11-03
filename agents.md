@@ -7,7 +7,7 @@
 
 ## Ableton Bridge Agent
 - **Scope**: Own the control-surface integration with Ableton Live via Python Remote Scripts, AbletonOSC, or Ableton.js. Prototype and harden device loading, clip management, and transport control APIs.
-- **Key Outputs**: Remote Script implementation, connectivity harnesses, regression-safe wrappers for Live Object Model actions, integration tests run inside Live.
+- **Key Outputs**: Remote Script implementation, connectivity harnesses, regression-safe wrappers for Live Object Model actions, integration tests run inside Live. Reference `docs/ableton_bridge_setup.md` for environment setup and `docs/abletonosc_docs.md` for the consolidated AbletonOSC command list.
 - **Handoffs**: Supplies execution adapters to the LLM Orchestrator; collaborates with the QA Agent for in-Live test scenarios.
 
 ## LLM Orchestrator

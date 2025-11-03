@@ -48,7 +48,6 @@ class InMemoryContextProvider:
                     for clip in item.get("clips", [])
                 ],
             )
-
             devices = []
             for device in item.get("devices", []):
                 devices.append(
