@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Protocol
+from typing import Optional, Protocol
 
 from .state import Clip, Device, DeviceParameter, LiveContext, Track
 from ..orchestrator.schema import (
@@ -87,12 +87,18 @@ class InMemoryContextProvider:
 class MutableContextProvider(ContextProvider):
     """Mutable in-memory context that evolves as actions execute."""
 
-    fixture_path: Path
+    fixture_path: Optional[Path] = None
+    initial_context: Optional[LiveContext] = None
     _context: LiveContext = field(init=False)
 
     def __post_init__(self) -> None:
-        loader = InMemoryContextProvider(fixture_path=self.fixture_path)
-        self._context = loader.snapshot()
+        if self.initial_context is not None:
+            self._context = self.initial_context
+        elif self.fixture_path is not None:
+            loader = InMemoryContextProvider(fixture_path=self.fixture_path)
+            self._context = loader.snapshot()
+        else:
+            raise ValueError("MutableContextProvider requires fixture_path or initial_context")
 
     def snapshot(self) -> LiveContext:
         return self._context
