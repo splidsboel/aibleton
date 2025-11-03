@@ -9,6 +9,7 @@ from dataclasses import replace
 from ..bridge.config import OSCBridgeConfig
 from ..bridge.logging import LoggingBridge
 from ..bridge.osc import AbletonOSCBridge
+from ..bridge.osc_listener import AbletonOSCSubscriptionManager, OSCListener
 from ..context import AbletonOSCContextProvider, MutableContextProvider
 from ..context.live_provider import OSCQueryError
 from ..orchestrator.hybrid import HybridOrchestrator
