@@ -6,8 +6,8 @@ This plan summarizes the next major milestones after the MVP (see `MANIFEST.md`)
 - ✅ Configurable AbletonOSC bridge with dry-run and UDP transport support (see `src/aibleton/bridge`).
 - ✅ Smoke tooling (`scripts/bridge_smoke.py`) and setup docs (`docs/ableton_bridge_setup.md`).
 - ✅ Regression coverage via `tests/test_bridge.py` and CLI integration dry-runs.
-- ⏭ Extend parity beyond tempo/clip/volume (device parameters, note injection).
-- ⏭ Replace JSON fixture context with live Ableton state discovery.
+- ✅ Device parameter control and live Ableton state discovery (`AbletonOSCContextProvider`).
+- ⏭ Extend parity toward note creation (`clip_slot/set_notes`) so generated patterns populate clips.
 
 ## 2. Structured Command Loop with LLM
 - Define the JSON schema (function signatures, error payloads) for LLM output.
