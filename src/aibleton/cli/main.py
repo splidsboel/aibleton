@@ -9,6 +9,7 @@ from dataclasses import replace
 from ..bridge.config import OSCBridgeConfig
 from ..bridge.logging import LoggingBridge
 from ..bridge.osc import AbletonOSCBridge
+from ..bridge.osc_listener import AbletonOSCSubscriptionManager, OSCListener
 from ..context import AbletonOSCContextProvider, MutableContextProvider
 from ..context.live_provider import OSCQueryError
 from ..orchestrator.hybrid import HybridOrchestrator
@@ -63,6 +64,17 @@ def build_parser() -> argparse.ArgumentParser:
         "--osc-send",
         action="store_true",
         help="Enable actual UDP transport for OSC bridge (otherwise dry-run).",
+    )
+    parser.add_argument(
+        "--live-listen",
+        action="store_true",
+        help="Subscribe to AbletonOSC listeners (tempo, track volume) for live updates.",
+    )
+    parser.add_argument(
+        "--inspect-limit",
+        type=int,
+        default=3,
+        help="Number of device parameters to display per device during /inspect.",
     )
     return parser
 
@@ -121,11 +133,56 @@ def main(argv: list[str] | None = None) -> None:
     )
     safety = SafetyManager()
 
+    listener: OSCListener | None = None
+    subscription: AbletonOSCSubscriptionManager | None = None
+    subscription_enabled = False
+
     if args.bridge == "osc":
         bridge = AbletonOSCBridge(
             config=config,
             context_provider=context_provider,
         )
+
+        if args.live_listen and live_context is not None:
+            try:
+                listener = OSCListener(host="0.0.0.0", port=config.listen_port or 0)
+                subscription = AbletonOSCSubscriptionManager(
+                    listener=listener,
+                    host=config.host,
+                    port=config.port,
+                )
+
+                def _tempo_handler(args: tuple[float, ...]) -> None:
+                    if not args:
+                        return
+                    tempo = float(args[-1])
+                    context_provider.update_tempo(tempo)
+
+                def _track_volume_handler(args: tuple[float, ...]) -> None:
+                    if len(args) < 2:
+                        return
+                    track_index = int(args[0])
+                    gain = float(args[1])
+                    context_provider.update_track_volume_linear(track_index, gain)
+
+                subscription.subscribe_song_property("tempo", _tempo_handler)
+                snapshot = context_provider.snapshot()
+                for track in snapshot.tracks:
+                    subscription.subscribe_track_property(
+                        track.track_index,
+                        "volume",
+                        _track_volume_handler,
+                    )
+                subscription_enabled = True
+                print(
+                    f"[context] Live listeners enabled (tempo, track volume) on port {listener.port}."
+                )
+            except Exception as exc:  # pragma: no cover - requires live OSC
+                subscription = None
+                if listener is not None:
+                    listener.close()
+                    listener = None
+                print(f"[context] Unable to enable live listeners: {exc}")
     else:
         bridge = LoggingBridge(context_provider=context_provider)
 
@@ -142,41 +199,54 @@ def main(argv: list[str] | None = None) -> None:
                 "OSC bridge dry-run mode; no UDP packets will be emitted. "
                 "Use --osc-send or set send=true in config."
             )
+        if args.live_listen and not subscription_enabled:
+            print(
+                "[context] Live listeners inactive; ensure AbletonOSC is reachable and listen_port is available."
+            )
 
-    while True:
-        try:
-            raw = input("aibleton> ").strip()
-        except (KeyboardInterrupt, EOFError):
-            print("\nBye.")
-            break
+    try:
+        while True:
+            try:
+                raw = input("aibleton> ").strip()
+            except (KeyboardInterrupt, EOFError):
+                print("\nBye.")
+                break
 
-        if not raw:
-            continue
-        if raw.lower() in {"quit", "exit"}:
-            print("Bye.")
-            break
-        if raw.lower() == "help":
-            _print_help()
-            continue
-
-        try:
-            plan = orchestrator.plan(raw)
-        except OrchestrationError as exc:
-            print(f"[orchestrator] {exc}")
-            continue
-
-        explanation = None
-        if safety.requires_confirmation(plan):
-            explanation = safety.explanation(plan)
-            print(f"[safety] Confirmation required: {explanation}")
-            if not _confirm():
-                print("[safety] Cancelled.")
+            if not raw:
+                continue
+            if raw.lower() in {"quit", "exit"}:
+                print("Bye.")
+                break
+            if raw.lower() in {"inspect", "/inspect"}:
+                _print_context(context_provider, parameter_limit=args.inspect_limit)
+                continue
+            if raw.lower() == "help":
+                _print_help()
                 continue
 
-        bridge.execute(plan)
-        if explanation:
-            print(f"[safety] Proceeded with: {explanation}")
-        print(f"[ok] {plan.summary}")
+            try:
+                plan = orchestrator.plan(raw)
+            except OrchestrationError as exc:
+                print(f"[orchestrator] {exc}")
+                continue
+
+            explanation = None
+            if safety.requires_confirmation(plan):
+                explanation = safety.explanation(plan)
+                print(f"[safety] Confirmation required: {explanation}")
+                if not _confirm():
+                    print("[safety] Cancelled.")
+                    continue
+
+            bridge.execute(plan)
+            if explanation:
+                print(f"[safety] Proceeded with: {explanation}")
+            print(f"[ok] {plan.summary}")
+    finally:
+        if subscription is not None:
+            subscription.close()
+        if listener is not None:
+            listener.close()
 
 
 def _print_help() -> None:
@@ -186,11 +256,43 @@ def _print_help() -> None:
     print("  turn hi hat down by 3")
     print("  create 4 bar clip named intro on drums")
     print("  launch intro beat clip on drums")
+    print("  inspect  # prints current context snapshot")
 
 
 def _confirm() -> bool:
     response = input("Proceed? [y/N] ").strip().lower()
     return response in {"y", "yes"}
+
+
+def _print_context(provider: MutableContextProvider, parameter_limit: int = 3) -> None:
+    context = provider.snapshot()
+    print(
+        f"[context] Tempo {context.tempo_bpm:.1f} BPM | scenes={context.scene_count} | tracks={len(context.tracks)}"
+    )
+    for track in context.tracks:
+        vol_info = f"{track.volume_db:.1f} dB"
+        if track.volume_linear:
+            vol_info += f" | {track.volume_linear:.3f} linear"
+        print(
+            f"  track {track.track_index}: {track.name} (vol {vol_info}, clips={len(track.clips)}, devices={len(track.devices)})"
+        )
+        for clip in track.clips:
+            clip_type = "MIDI" if clip.is_midi else "Audio"
+            print(
+                f"    clip slot {clip.slot_index}: {clip.name} [{clip_type}] (scene {clip.scene_index})"
+            )
+        for device in track.devices:
+            params = ", ".join(
+                f"{param.name}={param.value:.3f}"
+                for param in device.parameters[:parameter_limit]
+            )
+            extra = ""
+            if len(device.parameters) > parameter_limit:
+                extra = f", …(+{len(device.parameters) - parameter_limit})"
+            label = f"[{params}{extra}]" if params or extra else ""
+            print(
+                f"    device {device.device_index}: {device.name} {label}".rstrip()
+            )
 
 
 if __name__ == "__main__":
