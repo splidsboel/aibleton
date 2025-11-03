@@ -9,7 +9,8 @@ from dataclasses import replace
 from ..bridge.config import OSCBridgeConfig
 from ..bridge.logging import LoggingBridge
 from ..bridge.osc import AbletonOSCBridge
-from ..context.provider import MutableContextProvider
+from ..context import AbletonOSCContextProvider, MutableContextProvider
+from ..context.live_provider import OSCQueryError
 from ..orchestrator.hybrid import HybridOrchestrator
 from ..orchestrator.rule_based import RuleBasedOrchestrator
 from ..orchestrator.structured import StructuredPlanParser
@@ -72,14 +73,6 @@ def main(argv: list[str] | None = None) -> None:
 
     logging.basicConfig(level=getattr(logging, args.log_level.upper()))
 
-    context_provider = MutableContextProvider(fixture_path=args.fixture)
-    rule_based = RuleBasedOrchestrator(context_provider=context_provider)
-    structured_parser = StructuredPlanParser()
-    orchestrator = HybridOrchestrator(
-        structured_parser=structured_parser, fallback=rule_based
-    )
-    safety = SafetyManager()
-
     parser_defaults = {
         "osc_host": parser.get_default("osc_host"),
         "osc_port": parser.get_default("osc_port"),
@@ -105,6 +98,28 @@ def main(argv: list[str] | None = None) -> None:
             config = replace(config, port=args.osc_port)
         if args.osc_send != parser_defaults["osc_send"]:
             config = replace(config, send=args.osc_send)
+
+    live_context = None
+    if args.bridge == "osc":
+        try:
+            live_provider = AbletonOSCContextProvider(config=config)
+            live_context = live_provider.snapshot()
+            live_provider.close()
+            print("[context] Loaded live snapshot via AbletonOSC.")
+        except OSCQueryError as exc:
+            print(f"[context] Live snapshot failed ({exc}); using fixture {args.fixture}.")
+
+    if live_context is not None:
+        context_provider = MutableContextProvider(initial_context=live_context)
+    else:
+        context_provider = MutableContextProvider(fixture_path=args.fixture)
+
+    rule_based = RuleBasedOrchestrator(context_provider=context_provider)
+    structured_parser = StructuredPlanParser()
+    orchestrator = HybridOrchestrator(
+        structured_parser=structured_parser, fallback=rule_based
+    )
+    safety = SafetyManager()
 
     if args.bridge == "osc":
         bridge = AbletonOSCBridge(

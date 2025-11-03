@@ -7,7 +7,7 @@ from typing import Iterable, List, Sequence, Tuple, Union
 
 
 OSCArg = Union[int, float, str]
-OSCMessage = Tuple[str, Sequence[OSCArg]]
+OSCMessage = Tuple[str, Tuple[OSCArg, ...]]
 
 
 def _pad(data: bytes) -> bytes:
@@ -38,6 +38,60 @@ def encode_osc_message(address: str, args: Sequence[OSCArg]) -> bytes:
 
     encoded_types = _pad("".join(type_tags).encode("utf-8") + b"\x00")
     return b"".join([encoded_address, encoded_types, *encoded_args])
+
+
+def decode_osc_packet(data: bytes) -> List[OSCMessage]:
+    """Decode a raw OSC packet into a list of messages."""
+
+    def _decode_message(payload: bytes) -> OSCMessage:
+        idx = 0
+
+        def read_string(offset: int) -> Tuple[str, int]:
+            end = payload.find(b"\x00", offset)
+            if end == -1:
+                raise ValueError("Malformed OSC string")
+            raw = payload[offset:end].decode("utf-8")
+            offset = end + 1
+            offset = (offset + 3) & ~0x03
+            return raw, offset
+
+        address, idx = read_string(idx)
+        type_tags, idx = read_string(idx)
+        if not type_tags.startswith(","):
+            raise ValueError("OSC message missing type tag prefix")
+
+        args: List[OSCArg] = []
+        for tag in type_tags[1:]:
+            if tag == "i":
+                args.append(struct.unpack_from(">i", payload, idx)[0])
+                idx += 4
+            elif tag == "f":
+                args.append(struct.unpack_from(">f", payload, idx)[0])
+                idx += 4
+            elif tag == "s":
+                value, idx = read_string(idx)
+                args.append(value)
+            elif tag == "T":
+                args.append(True)
+            elif tag == "F":
+                args.append(False)
+            elif tag == "N":
+                args.append(None)
+            else:
+                raise ValueError(f"Unsupported OSC type tag '{tag}'")
+        return address, tuple(args)
+
+    if data.startswith(b"#bundle"):
+        idx = 16  # '#bundle' + 8-byte timetag
+        messages: List[OSCMessage] = []
+        while idx < len(data):
+            size = struct.unpack_from(">i", data, idx)[0]
+            idx += 4
+            payload = data[idx : idx + size]
+            idx += size
+            messages.extend(decode_osc_packet(payload))
+        return messages
+    return [_decode_message(data)]
 
 
 class OSCTransport:
