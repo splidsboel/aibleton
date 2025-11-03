@@ -70,6 +70,12 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Subscribe to AbletonOSC listeners (tempo, track volume) for live updates.",
     )
+    parser.add_argument(
+        "--inspect-limit",
+        type=int,
+        default=3,
+        help="Number of device parameters to display per device during /inspect.",
+    )
     return parser
 
 
@@ -211,6 +217,9 @@ def main(argv: list[str] | None = None) -> None:
             if raw.lower() in {"quit", "exit"}:
                 print("Bye.")
                 break
+            if raw.lower() in {"inspect", "/inspect"}:
+                _print_context(context_provider, parameter_limit=args.inspect_limit)
+                continue
             if raw.lower() == "help":
                 _print_help()
                 continue
@@ -247,11 +256,40 @@ def _print_help() -> None:
     print("  turn hi hat down by 3")
     print("  create 4 bar clip named intro on drums")
     print("  launch intro beat clip on drums")
+    print("  inspect  # prints current context snapshot")
 
 
 def _confirm() -> bool:
     response = input("Proceed? [y/N] ").strip().lower()
     return response in {"y", "yes"}
+
+
+def _print_context(provider: MutableContextProvider, parameter_limit: int = 3) -> None:
+    context = provider.snapshot()
+    print(
+        f"[context] Tempo {context.tempo_bpm:.1f} BPM | scenes={context.scene_count} | tracks={len(context.tracks)}"
+    )
+    for track in context.tracks:
+        print(
+            f"  track {track.track_index}: {track.name} (vol ≈ {track.volume_db:.1f} dB, clips={len(track.clips)}, devices={len(track.devices)})"
+        )
+        for clip in track.clips:
+            clip_type = "MIDI" if clip.is_midi else "Audio"
+            print(
+                f"    clip slot {clip.slot_index}: {clip.name} [{clip_type}] (scene {clip.scene_index})"
+            )
+        for device in track.devices:
+            params = ", ".join(
+                f"{param.name}={param.value:.3f}"
+                for param in device.parameters[:parameter_limit]
+            )
+            extra = ""
+            if len(device.parameters) > parameter_limit:
+                extra = f", …(+{len(device.parameters) - parameter_limit})"
+            label = f"[{params}{extra}]" if params or extra else ""
+            print(
+                f"    device {device.device_index}: {device.name} {label}".rstrip()
+            )
 
 
 if __name__ == "__main__":
