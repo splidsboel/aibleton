@@ -9,7 +9,8 @@ This plan summarizes the next major milestones after the MVP (see `MANIFEST.md`)
 - ✅ Regression coverage via `tests/test_bridge.py` and CLI integration dry-runs.
 - ✅ Device parameter control and live Ableton state discovery (`AbletonOSCContextProvider`).
 - ✅ AbletonOSC listener subscriptions for tempo and track volumes (`--live-listen`, `/inspect`).
-- ⏭ Extend parity toward note creation (`clip_slot/set_notes`) so generated patterns populate clips.
+- ✅ Clip note creation via AbletonOSC (`clip/remove/notes` + `clip/add/notes`) with placeholder pattern generators.
+- ⏭ Replace rule-based note patterns with LLM-generated note arrays once the structured command loop is in place.
 - ⏭ Improve AbletonOSC discovery latency by batching requests, parallelizing queries, or trimming device parameter fetches.
 - ⏭ Expand listener coverage (device parameters, clip state) and surface push updates in UI.
 
