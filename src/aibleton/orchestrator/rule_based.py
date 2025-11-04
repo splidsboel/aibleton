@@ -6,6 +6,11 @@ from typing import Callable, Optional
 
 from ..context.provider import ContextProvider
 from ..context.state import LiveContext, Track
+from ..utils.midi import (
+    basic_drum_pattern,
+    generate_notes,
+    simple_bassline,
+)
 from .schema import (
     ActionPlan,
     CreateMidiClipAction,
@@ -157,11 +162,17 @@ class RuleBasedOrchestrator:
             raise OrchestrationError(f"Track '{track_name}' does not exist.")
 
         pattern = "kick-snare" if "drum" in track.name.lower() else "basic-arpeggio"
+        pattern_notes = None
+        generator = PATTERN_LIBRARY.get(pattern)
+        if generator:
+            note_objects = generate_notes(generator, length)
+            pattern_notes = [list(note.as_tuple()) for note in note_objects]
         action = CreateMidiClipAction(
             track_name=track.name,
             clip_name=clip_name,
             length_bars=length,
             pattern=pattern,
+            notes=pattern_notes,
         )
         summary = f"Create a {length}-bar clip '{clip_name}' on '{track.name}' using pattern '{pattern}'."
         return ActionPlan(
@@ -216,3 +227,8 @@ class RuleBasedOrchestrator:
         if not track:
             raise OrchestrationError(f"Track '{track_name}' does not exist.")
         return track.volume_db
+PATTERN_LIBRARY = {
+    "kick-snare": basic_drum_pattern,
+    "basic-arpeggio": simple_bassline,
+    "basic-bass": simple_bassline,
+}

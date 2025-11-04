@@ -48,6 +48,7 @@ class InMemoryContextProvider:
                         scene_index=clip["scene_index"],
                         slot_index=clip["slot_index"],
                         is_midi=clip.get("is_midi", True),
+                        notes=clip.get("notes", []),
                     )
                     for clip in item.get("clips", [])
                 ],
@@ -134,7 +135,8 @@ class MutableContextProvider(ContextProvider):
                         name=action.clip_name,
                         scene_index=0,
                         slot_index=next_slot,
-                        is_midi=True,
+                        is_midi=action.pattern is not None,
+                        notes=action.notes or [],
                     )
                 )
                 if next_slot + 1 > self._context.scene_count:
@@ -179,6 +181,17 @@ class MutableContextProvider(ContextProvider):
                         param = parameter_list[parameter_index]
                         clamped = max(param.min_value, min(param.max_value, value))
                         param.value = clamped
+
+    def update_clip_notes(
+        self, track_index: int, clip_slot: int, notes: list[list[float]]
+    ) -> None:
+        with self._lock:
+            if 0 <= track_index < len(self._context.tracks):
+                track = self._context.tracks[track_index]
+                for clip in track.clips:
+                    if clip.slot_index == clip_slot:
+                        clip.notes = notes
+                        break
 
     @staticmethod
     def _gain_to_db(value: float) -> float:

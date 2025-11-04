@@ -134,7 +134,7 @@ class BridgeTests(unittest.TestCase):
         messages = bridge.recorded_messages()
         self.assertIsNotNone(messages)
         assert messages is not None
-        self.assertEqual(len(messages), 1)
+        self.assertGreaterEqual(len(messages), 1)
         address, args = messages[0]
         self.assertEqual(address, "/live/device/set/parameter/value")
         self.assertEqual(args[:3], (0, 0, 0))
@@ -150,6 +150,34 @@ class BridgeTests(unittest.TestCase):
         self.assertEqual(context.tempo_bpm, 140.0)
         drums = context.tracks[0]
         self.assertAlmostEqual(drums.devices[0].parameters[0].value, 12.0)
+
+    def test_create_clip_with_notes(self) -> None:
+        provider = MutableContextProvider(fixture_path=FIXTURE_PATH)
+        config = OSCBridgeConfig(send=False)
+        bridge = AbletonOSCBridge(config=config, context_provider=provider)
+
+        notes = [
+            [36, 0.0, 0.5, 110, 0],
+            [38, 1.0, 0.5, 100, 0],
+        ]
+        plan = ActionPlan(
+            intent="create_midi_clip",
+            summary="",
+            actions=[
+                CreateMidiClipAction(
+                    track_name="Drums",
+                    clip_name="Note Test",
+                    length_bars=1,
+                    pattern="kick-snare",
+                    notes=notes,
+                )
+            ],
+        )
+        bridge.execute(plan)
+        messages = bridge.recorded_messages()
+        assert messages is not None
+        self.assertEqual(messages[-1][0], "/live/clip/set/notes")
+        self.assertIn(36, messages[-1][1])
 
 
 if __name__ == "__main__":

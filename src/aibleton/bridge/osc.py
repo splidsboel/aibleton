@@ -110,6 +110,8 @@ class AbletonOSCBridge:
                 int(slot_index),
                 float(length_beats),
             ]
+            if action.notes:
+                yield from self._set_clip_notes(track.track_index, slot_index, action.notes)
         elif isinstance(action, SetDeviceParameterAction):
             if not context:
                 raise BridgeError("Setting device parameter requires context.")
@@ -195,3 +197,31 @@ class AbletonOSCBridge:
         if not self.dry_run_recorder:
             return None
         return tuple(self.dry_run_recorder.messages)
+
+    def _set_clip_notes(
+        self, track_index: int, clip_slot: int, notes: list[list[float]]
+    ) -> Iterable[OSCMessage]:
+        flattened: list[float | int] = []
+        for entry in notes:
+            if len(entry) != 5:
+                raise BridgeError(
+                    "Notes must be [pitch, start, duration, velocity, mute]."
+                )
+            pitch, start, duration, velocity, mute = entry
+            flattened.extend(
+                [
+                    int(pitch),
+                    float(start),
+                    float(duration),
+                    int(velocity),
+                    int(mute),
+                ]
+            )
+        if not flattened:
+            return []
+        return [
+            (
+                "/live/clip/set/notes",
+                (int(track_index), int(clip_slot), *flattened),
+            )
+        ]
