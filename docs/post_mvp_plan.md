@@ -8,12 +8,8 @@ This plan summarizes the next major milestones after the MVP (see `MANIFEST.md`)
 - ✅ Smoke tooling (`scripts/bridge_smoke.py`) and setup docs (`docs/ableton_bridge_setup.md`).
 - ✅ Regression coverage via `tests/test_bridge.py` and CLI integration dry-runs.
 - ✅ Device parameter control and live Ableton state discovery (`AbletonOSCContextProvider`).
-- ⏭ Extend parity toward note creation (`clip_slot/set_notes`) so generated patterns populate clips.
-- ⏭ Add manual/automatic context refresh (e.g., `/refresh` command or periodic rescan) so Live-side edits stay in sync.
-- ⏭ Improve AbletonOSC discovery latency by batching requests, parallelizing queries, or trimming device parameter fetches.
 - ✅ AbletonOSC listener subscriptions for tempo and track volumes (`--live-listen`, `/inspect`).
 - ⏭ Extend parity toward note creation (`clip_slot/set_notes`) so generated patterns populate clips.
-- ⏭ Add manual/automatic context refresh (e.g., `/refresh` command or periodic rescan) so Live-side edits stay in sync.
 - ⏭ Improve AbletonOSC discovery latency by batching requests, parallelizing queries, or trimming device parameter fetches.
 - ⏭ Expand listener coverage (device parameters, clip state) and surface push updates in UI.
 
