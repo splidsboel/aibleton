@@ -25,7 +25,7 @@ PYTHONPATH=src python -m unittest discover -s tests
 
 ## CLI Usage
 ```bash
-PYTHONPATH=src python -m aibleton.cli.main
+PYTHONPATH=src python -m aibleton.cli.main --bridge osc --config aibleton.toml --live-listen
 ```
 
 Key commands:
