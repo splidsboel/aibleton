@@ -176,7 +176,8 @@ class BridgeTests(unittest.TestCase):
         bridge.execute(plan)
         messages = bridge.recorded_messages()
         assert messages is not None
-        self.assertEqual(messages[-1][0], "/live/clip/set/notes")
+        self.assertEqual(messages[-2][0], "/live/clip/remove/notes")
+        self.assertEqual(messages[-1][0], "/live/clip/add/notes")
         self.assertIn(36, messages[-1][1])
 
 

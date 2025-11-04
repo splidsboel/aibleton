@@ -111,7 +111,9 @@ class AbletonOSCBridge:
                 float(length_beats),
             ]
             if action.notes:
-                yield from self._set_clip_notes(track.track_index, slot_index, action.notes)
+                yield from self._set_clip_notes(
+                    track.track_index, slot_index, action.notes
+                )
         elif isinstance(action, SetDeviceParameterAction):
             if not context:
                 raise BridgeError("Setting device parameter requires context.")
@@ -217,11 +219,18 @@ class AbletonOSCBridge:
                     int(mute),
                 ]
             )
-        if not flattened:
-            return []
-        return [
+        messages: list[OSCMessage] = []
+        messages.append(
             (
-                "/live/clip/set/notes",
-                (int(track_index), int(clip_slot), *flattened),
+                "/live/clip/remove/notes",
+                (int(track_index), int(clip_slot)),
             )
-        ]
+        )
+        if flattened:
+            messages.append(
+                (
+                    "/live/clip/add/notes",
+                    (int(track_index), int(clip_slot), *flattened),
+                )
+            )
+        return messages
