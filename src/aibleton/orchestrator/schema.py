@@ -35,7 +35,7 @@ class CreateMidiClipAction(BaseAction):
     track_name: str
     clip_name: str
     length_bars: int
-    pattern: str
+    pattern: str = ""
     notes: List[List[float]] | None = None
 
 
@@ -64,6 +64,7 @@ class ActionPlan:
     actions: List[BaseAction]
     confidence: float = 0.0
     requires_confirmation: bool = False
+    schema_version: str = "v0.1"
 
     def dump(self) -> dict:
         return {
@@ -72,10 +73,16 @@ class ActionPlan:
             "confidence": self.confidence,
             "requires_confirmation": self.requires_confirmation,
             "actions": [action.dump() for action in self.actions],
+            "schema_version": self.schema_version,
         }
 
     @classmethod
     def from_dict(cls, data: Dict) -> "ActionPlan":
+        schema_version = data.get("schema_version", "v0.1")
+        if schema_version != "v0.1":
+            raise OrchestrationError(
+                f"Unsupported schema version '{schema_version}'. Expected 'v0.1'."
+            )
         if "actions" not in data:
             raise OrchestrationError("Structured plan missing 'actions' field.")
         actions = [action_from_dict(item) for item in data["actions"]]
@@ -85,6 +92,7 @@ class ActionPlan:
             actions=actions,
             confidence=float(data.get("confidence", 0.0)),
             requires_confirmation=bool(data.get("requires_confirmation", False)),
+            schema_version=schema_version,
         )
 
 

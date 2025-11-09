@@ -15,7 +15,7 @@ This plan summarizes the next major milestones after the MVP (see `MANIFEST.md`)
 - ⏭ Expand listener coverage (device parameters, clip state) and surface push updates in UI.
 
 ## 2. Structured Command Loop with LLM
-- Define the JSON schema (function signatures, error payloads) for LLM output.
+- Plan: Lock the JSON/Function schema for LLM output, including validations (enum fields, required keys) so the orchestrator can trust the model. Document schema versioning and migration steps before wiring the LLM client.
 - Wire the hybrid orchestrator to a real LLM/fn-calling endpoint with retry logic.
 - Create prompt/response fixtures and golden transcripts for common tasks.
 - Introduce telemetry for parsing failures to guide prompt tuning.

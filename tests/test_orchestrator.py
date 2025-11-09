@@ -61,6 +61,35 @@ class StructuredParserTests(unittest.TestCase):
         with self.assertRaises(OrchestrationError):
             parser.parse(json.dumps(bad_payload))
 
+    def test_structured_parser_schema_version_mismatch(self) -> None:
+        parser = StructuredPlanParser()
+        payload = {
+            "schema_version": "v0.0",
+            "intent": "tempo",
+            "summary": "",
+            "actions": [{"type": "set_tempo", "tempo_bpm": 120}],
+        }
+        with self.assertRaises(OrchestrationError):
+            parser.parse(json.dumps(payload))
+
+    def test_structured_parser_rejects_bad_notes(self) -> None:
+        parser = StructuredPlanParser()
+        payload = {
+            "intent": "bad notes",
+            "summary": "",
+            "actions": [
+                {
+                    "type": "create_midi_clip",
+                    "track_name": "Drums",
+                    "clip_name": "Bad",
+                    "length_bars": 4,
+                    "notes": [[36, 0, -1, 100, 0]],
+                }
+            ],
+        }
+        with self.assertRaises(OrchestrationError):
+            parser.parse(json.dumps(payload))
+
 
 class HybridOrchestratorTests(unittest.TestCase):
     def test_hybrid_orchestrator_fallback_rule_based(self) -> None:
