@@ -35,7 +35,7 @@ class CreateMidiClipAction(BaseAction):
     track_name: str
     clip_name: str
     length_bars: int
-    pattern: str
+    pattern: str = ""
     notes: List[List[float]] | None = None
 
 
