@@ -8,7 +8,56 @@
       "volume_db": -3.0,
       "volume_linear": 0.707,
       "clips": [
-        {"name": "Intro Beat", "scene_index": 0, "slot_index": 0, "is_midi": true}
+        {
+          "name": "Intro Beat",
+          "scene_index": 0,
+          "slot_index": 0,
+          "is_midi": true,
+          "notes": [
+            [
+              36,
+              0.0,
+              0.5,
+              110,
+              0
+            ],
+            [
+              38,
+              1.0,
+              0.5,
+              100,
+              0
+            ],
+            [
+              42,
+              0.5,
+              0.25,
+              90,
+              0
+            ],
+            [
+              42,
+              1.5,
+              0.25,
+              90,
+              0
+            ],
+            [
+              42,
+              2.5,
+              0.25,
+              90,
+              0
+            ],
+            [
+              42,
+              3.5,
+              0.25,
+              90,
+              0
+            ]
+          ]
+        }
       ],
       "devices": [
         {
@@ -39,7 +88,12 @@
       "volume_db": -6.0,
       "volume_linear": 0.501,
       "clips": [
-        {"name": "Bassline", "scene_index": 0, "slot_index": 0, "is_midi": true}
+        {
+          "name": "Bassline",
+          "scene_index": 0,
+          "slot_index": 0,
+          "is_midi": true
+        }
       ]
     },
     {

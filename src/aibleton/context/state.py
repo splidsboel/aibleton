@@ -12,6 +12,7 @@ class Clip:
     scene_index: int
     slot_index: int
     is_midi: bool = True
+    notes: List[List[float]] = field(default_factory=list)
 
 
 @dataclass

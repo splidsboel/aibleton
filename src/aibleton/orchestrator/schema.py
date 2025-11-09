@@ -36,6 +36,7 @@ class CreateMidiClipAction(BaseAction):
     clip_name: str
     length_bars: int
     pattern: str
+    notes: List[List[float]] | None = None
 
 
 @dataclass

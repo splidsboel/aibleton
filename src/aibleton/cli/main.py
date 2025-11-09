@@ -278,8 +278,9 @@ def _print_context(provider: MutableContextProvider, parameter_limit: int = 3) -
         )
         for clip in track.clips:
             clip_type = "MIDI" if clip.is_midi else "Audio"
+            note_info = f", notes={len(clip.notes)}" if clip.notes else ""
             print(
-                f"    clip slot {clip.slot_index}: {clip.name} [{clip_type}] (scene {clip.scene_index})"
+                f"    clip slot {clip.slot_index}: {clip.name} [{clip_type}] (scene {clip.scene_index}{note_info})"
             )
         for device in track.devices:
             params = ", ".join(
