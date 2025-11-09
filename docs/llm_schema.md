@@ -80,7 +80,3 @@ This document describes the JSON structure the LLM must output so the assistant 
 - The orchestration layer will reject unknown `type` values or missing required fields.
 - Numeric ranges (BPM, velocity 0–127, etc.) should be enforced before committing the plan.
 - Future schema versions should bump a `schema_version` field to ease migrations.
-
-## Next Steps
-- Mirror this schema in the orchestrator structured parser (strict JSON validation).
-- Provide example prompts and few-shot responses to guide the LLM.
